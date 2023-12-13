@@ -29,7 +29,7 @@ sem_t** semAutorisation;
 int start_cond  = 1;
 //conteur de cycles
 int eat_counter;
-
+int group = 0;
 
 // timerThread flag
 bool timerRunning = false;
@@ -292,10 +292,10 @@ void fonctionOrdonnancerWithSemaphoresFull(){
 		eat_counter++;
 	}
 	else{
-		int group = eat_counter%NB_PHILOSOPHES; // groupe actuel
+		group = eat_counter%NB_PHILOSOPHES; // groupe actuel
 		for(int i = 0;i<NB_PHILOSOPHES;i++){
 			if(i%2==0 && i<(NB_PHILOSOPHES-2)){
-				if(group == 0 && i ==0){
+				if(group == 0 && i == 0){
 					sem_wait(semAutorisation[NB_PHILOSOPHES-1]);
 				}
 				else{
@@ -454,10 +454,7 @@ void manger(void) {
 void* vieDuPhilosophe(void* idPtr)
 {
     int id = * ((int*)idPtr);
-    int id_1 = id+1;
-    if(id == 4){
-		id_1 = 0;
-	}
+
     actualiserEtAfficherEtatsPhilosophes(id,'A');
 
     // Configuration du thread : il sera annulable à partir de n'importe quel point de préemption
@@ -487,13 +484,13 @@ void* vieDuPhilosophe(void* idPtr)
 		    case 'M':
 		    	sem_wait(semFourchettes[id]);
 				usleep(10000);
-				sem_wait(semFourchettes[id_1]);
+				sem_wait(semFourchettes[(id+1)%NB_PHILOSOPHES]);
 				//std::cout << "Philo : "<< id << " managed to get forks and is eating" << std::endl;
 		    	//std::cout << "Philo : "<< id << " is eating" << std::endl;
 		    	manger();
 		    	sem_post(semFourchettes[id]);
 				usleep(10000);
-				sem_post(semFourchettes[id_1]);
+				sem_post(semFourchettes[(id+1)%NB_PHILOSOPHES]);
 				//std::cout << "Philo "<< id << "ended eating success and dropped forks" << std::endl;
 				//actualiserEtAfficherEtatsPhilosophes(id,4);
 				actualiserEtAfficherEtatsPhilosophes(id,'P');
