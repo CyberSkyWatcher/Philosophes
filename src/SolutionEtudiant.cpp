@@ -280,6 +280,49 @@ void fonctionOrdonnancerWithSemaphores(){
 	}
 }
 
+void fonctionOrdonnancerWithSemaphoresFull(){
+	/*Logique simple - on utilise les sémaphores pour donner les autorisations */
+	if(start_cond){
+		for(int i = 0; i<NB_PHILOSOPHES;i++){
+			if(i%2==0 && i<(NB_PHILOSOPHES-2)){
+				sem_post(semAutorisation[i]);
+			}
+		}
+		start_cond=0;
+		eat_counter++;
+	}
+	else{
+		int group = eat_counter%NB_PHILOSOPHES; // groupe actuel
+		for(int i = 0;i<NB_PHILOSOPHES;i++){
+			if(i%2==0 && i<(NB_PHILOSOPHES-2)){
+				if(group == 0 && i ==0){
+					sem_wait(semAutorisation[NB_PHILOSOPHES-1]);
+				}
+				else{
+					sem_wait(semAutorisation[(i+group-1)%NB_PHILOSOPHES]);
+				}
+
+			}
+		}
+
+		for(int i = 0;i<NB_PHILOSOPHES;i++){
+			if(i%2==0 && i<(NB_PHILOSOPHES-2)){
+				while(etatsPhilosophes[(i+group)%NB_PHILOSOPHES]!='A');
+				//sem_post(semAutorisation[(i+group)%NB_PHILOSOPHES]);
+			}
+		}
+
+		for(int i = 0;i<NB_PHILOSOPHES;i++){
+			if(i%2==0 && i<(NB_PHILOSOPHES-2)){
+				//while(etatsPhilosophes[(i+group)%NB_PHILOSOPHES]!='A');
+				sem_post(semAutorisation[(i+group)%NB_PHILOSOPHES]);
+			}
+		}
+		eat_counter++;
+	}
+}
+
+
 void* timerFunction(void* arg) {
     // Configuration du thread : il sera annulable à partir de n'importe quel point de préemption
     // (appel bloquant, appel système, etc...)
@@ -290,10 +333,11 @@ void* timerFunction(void* arg) {
         //fonctionOrdonnancer();
         //fonctionOrdonnancer_auto();
 
-    	fonctionOrdonnancerWithSemaphores();
+    	//fonctionOrdonnancerWithSemaphores();
+    	fonctionOrdonnancerWithSemaphoresFull();
     	// time count
         time_t currentTime = time(NULL);
-        std::cout << "Elapsed time: " << difftime(currentTime, instantDebut) << " seconds." << std::endl;
+        //std::cout << "Elapsed time: " << difftime(currentTime, instantDebut) << " seconds." << std::endl;
 
         // Sleep
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
@@ -396,14 +440,14 @@ void initialisation()
 
 }
 
-void penser (void){
-	double randomValue = (double)(rand()) / RAND_MAX * DUREE_MANGE_MAX_S; // better to  use random than  rand
-	sleep(randomValue);
+void penser(void) {
+    double randomValue = (double)rand() / RAND_MAX * DUREE_PENSE_MAX_S;
+    usleep((useconds_t)(randomValue * 1000000));
 }
 
-void manger (void){
-	double randomValue = (double)(rand()) / RAND_MAX * DUREE_MANGE_MAX_S;
-	sleep(randomValue);
+void manger(void) {
+    double randomValue = (double)rand() / RAND_MAX * DUREE_MANGE_MAX_S;
+    usleep((useconds_t)(randomValue * 1000000));
 }
 
 void* vieDuPhilosophe(void* idPtr)
@@ -431,7 +475,7 @@ void* vieDuPhilosophe(void* idPtr)
 
 		switch (etatsPhilosophes[id]) {
 		    case 'A':
-		    	std::cout << "Philo : "<< id << " is hungry" << std::endl;
+		    	//std::cout << "Philo : "<< id << " is hungry" << std::endl;
 		    	sem_wait(semAutorisation[id]);
 		    	//actualiserEtAfficherEtatsPhilosophes(id,2);
 				actualiserEtAfficherEtatsPhilosophes(id,'M');
@@ -443,22 +487,22 @@ void* vieDuPhilosophe(void* idPtr)
 		    	sem_wait(semFourchettes[id]);
 				usleep(10000);
 				sem_wait(semFourchettes[id_1]);
-				std::cout << "Philo : "<< id << " managed to get forks and is eating" << std::endl;
+				//std::cout << "Philo : "<< id << " managed to get forks and is eating" << std::endl;
 		    	//std::cout << "Philo : "<< id << " is eating" << std::endl;
 		    	manger();
 		    	sem_post(semFourchettes[id]);
 				usleep(10000);
 				sem_post(semFourchettes[id_1]);
-				std::cout << "Philo "<< id << "ended eating success and dropped forks" << std::endl;
+				//std::cout << "Philo "<< id << "ended eating success and dropped forks" << std::endl;
 				//actualiserEtAfficherEtatsPhilosophes(id,4);
 				actualiserEtAfficherEtatsPhilosophes(id,'P');
 				sem_post(semAutorisation[id]);
 		        break;
 
 		    case 'P':
-		    	std::cout << "Philo : "<< id << " is thinking" << std::endl;
+		    	//std::cout << "Philo : "<< id << " is thinking" << std::endl;
 		    	penser();
-		    	std::cout << "Philo : "<< id << " done thinking" << std::endl;
+		    	//std::cout << "Philo : "<< id << " done thinking" << std::endl;
 		    	actualiserEtAfficherEtatsPhilosophes(id,'A');
 		    	//std::cout << "Philo : "<< id << " is waiting for an order" << std::endl;
 				break;
