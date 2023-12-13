@@ -305,6 +305,7 @@ void fonctionOrdonnancerWithSemaphoresFull(){
 			}
 		}
 
+
 		for(int i = 0;i<NB_PHILOSOPHES;i++){
 			if(i%2==0 && i<(NB_PHILOSOPHES-2)){
 				while(etatsPhilosophes[(i+group)%NB_PHILOSOPHES]!='A');
