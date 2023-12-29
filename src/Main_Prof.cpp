@@ -61,9 +61,9 @@ int main(int argc, const char * argv[]) {
     initialisation();
     
     // - - - - - Attente infinie - - - - -
-    while(1)
+    while(1){
         sleep(60);
-    
+    }
     return 0;
 }
 
