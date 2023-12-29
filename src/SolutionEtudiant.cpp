@@ -30,20 +30,22 @@ sem_t** semFinDeService;
 //tableau  de séma pour synchronisation au démarrage
 sem_t** semProgrammeReady;
 
+pthread_mutex_t mutexCompteur;
+
 //variables programme
 //début d'exécution
 bool start_cond  = true;
 //conteur de cycles
 int eat_counter = 0;
 int group = 0;
-int scenario =1;
+int scenario =0;
 
 // timerThread flag
 bool timerRunning = false;
 bool sem_posted = false;
 bool next_group_ready = false;
 
-int nbPhilosEating = 2;
+int nbPhilosEating;
 
 /// Chacune des 2 solutions doit implémenter les fonctions initialisation,
 /// vieDuPhilosophe, actualiser... et terminerProgramme
@@ -181,7 +183,6 @@ etatsPhilosophes[0]== 1 && etatsPhilosophes[2] == 1
 	 */
 }
 
-
 void fonctionOrdonnancer_auto (){
 	switch(NB_PHILOSOPHES%2){
 		case 0:		// nb philos paire
@@ -291,7 +292,6 @@ void fonctionOrdonnancerWithSemaphores(){
 	}
 }
 
-
 bool philosReadyToEatImpair(){
 	//group = eat_counter%NB_PHILOSOPHES;
 	for(int i = 0;i<NB_PHILOSOPHES;i++){
@@ -319,15 +319,38 @@ bool philosEndedToEatImpair(){
 	}
 	return true;
 }
+
 bool philosReadyToEatPair(){
 	for(int i = 0;i<NB_PHILOSOPHES;i++){
-		if(i%2==0 && i<(NB_PHILOSOPHES-2)){
+		if(i%2==0 && group%2==0){
 			pthread_mutex_lock(&mutexEtats);
-			if(etatsPhilosophes[(i+group)%NB_PHILOSOPHES]!='F'){
+			if(etatsPhilosophes[(i+1)%NB_PHILOSOPHES]!='F'){
+				pthread_mutex_unlock(&mutexEtats);
 				return false;
 			}
 			pthread_mutex_unlock(&mutexEtats);
 		}
+		else if(i%2==0 && group%2==1){
+			pthread_mutex_lock(&mutexEtats);
+			if(etatsPhilosophes[i]!='F'){
+				pthread_mutex_unlock(&mutexEtats);
+				return false;
+			}
+			pthread_mutex_unlock(&mutexEtats);
+		}
+	}
+	return true;
+}
+
+bool philosEndedToEatPair(){
+	//group = eat_counter%NB_PHILOSOPHES;
+	for(int i = 0;i<NB_PHILOSOPHES;i++){
+		pthread_mutex_lock(&mutexEtats);
+		if(etatsPhilosophes[i]=='M'){
+			pthread_mutex_unlock(&mutexEtats);
+			return false;
+		}
+		pthread_mutex_unlock(&mutexEtats);
 	}
 	return true;
 }
@@ -434,6 +457,7 @@ void OrdonnancerAvecSemaphoresFinal(){
 	switch(scenario){
 		case 1:
 			//next_group_ready = philosReadyToEatImpair();
+			pthread_mutex_lock(&mutexCompteur);
 			if(philosReadyToEatImpair() && philosEndedToEatImpair() && nbPhilosEating == 0){
 				// on actualise le groupe
 				// on poste les sémaphores d autorisation
@@ -446,20 +470,45 @@ void OrdonnancerAvecSemaphoresFinal(){
 					//sem_getvalue(semAutorisation[(i+group)%NB_PHILOSOPHES],&value);
 					if(i%2==0 && i<(NB_PHILOSOPHES-2)){
 						//while(etatsPhilosophes[(i+group)%NB_PHILOSOPHES]!='A');
-						sem_post(semAutorisation[(i+group)%NB_PHILOSOPHES]);
 						pthread_mutex_lock(&mutexCout);
 						std::cout<<"philo id posted :"<<(i+group)%NB_PHILOSOPHES<<std::endl;
 						pthread_mutex_unlock(&mutexCout);
+						sem_post(semAutorisation[(i+group)%NB_PHILOSOPHES]);
 						//std::cout<<value<<std::endl;
 						//sem_posted = true;
 					}
 				}
 				eat_counter++;
-				nbPhilosEating = 2;
+				nbPhilosEating = (NB_PHILOSOPHES-1)/2;
 				//group = eat_counter%NB_PHILOSOPHES;
 			}
+			pthread_mutex_unlock(&mutexCompteur);
 			break;
 		case 0:
+			//next_group_ready = philosReadyToEatImpair();
+			pthread_mutex_lock(&mutexCompteur);
+			if(philosReadyToEatPair() && philosEndedToEatPair() && nbPhilosEating == 0){
+				// on actualise le groupe
+				// on poste les sémaphores d autorisation
+				group = eat_counter%NB_PHILOSOPHES; // groupe actuel
+				for(int i = 0;i<NB_PHILOSOPHES;i++){
+					if(i%2==0 && group%2==0){
+						pthread_mutex_lock(&mutexCout);
+						std::cout<<"philo id posted :"<<i<<std::endl;
+						pthread_mutex_unlock(&mutexCout);
+						sem_post(semAutorisation[(i)]);
+					}
+					else if(i%2==1 && group%2==1){
+						pthread_mutex_lock(&mutexCout);
+						std::cout<<"philo id posted :"<<i<<std::endl;
+						pthread_mutex_unlock(&mutexCout);
+						sem_post(semAutorisation[(i)]);
+					}
+				}
+				eat_counter++;
+				nbPhilosEating = (NB_PHILOSOPHES)/2;;
+			}
+			pthread_mutex_unlock(&mutexCompteur);
 			break;
 	}
 }
@@ -484,15 +533,29 @@ void* timerFunction(void* arg) {
 			}
 		}
 		eat_counter++;
-		nbPhilosEating = 2;
+		pthread_mutex_lock(&mutexCompteur);
+		nbPhilosEating = (NB_PHILOSOPHES-1)/2;
+		pthread_mutex_unlock(&mutexCompteur);
 		start_cond = false;
 		//group = eat_counter%NB_PHILOSOPHES;
+	}
+	else if(start_cond && scenario==0){
+		for(int i = 0; i<NB_PHILOSOPHES;i++){
+			if(i%2==0 && i<(NB_PHILOSOPHES)){
+				sem_post(semAutorisation[i]);
+				std::cout<<"philo id posted :"<<(i+group)%NB_PHILOSOPHES<<std::endl;
+			}
+		}
+		eat_counter++;
+		pthread_mutex_lock(&mutexCompteur);
+		nbPhilosEating = (NB_PHILOSOPHES)/2;
+		pthread_mutex_unlock(&mutexCompteur);
+		start_cond = false;
 	}
     while (1) {
         // appel ordonnanceur
         //fonctionOrdonnancer();
         //fonctionOrdonnancer_auto();
-
     	//fonctionOrdonnancerWithSemaphores();
 			//fonctionOrdonnancerWithSemaphoresFull();
     		OrdonnancerAvecSemaphoresFinal();
@@ -516,6 +579,14 @@ void initialisation()
 	start_cond = true;
 	timerRunning = false;
 	scenario = NB_PHILOSOPHES%2;
+	switch(scenario){
+	case 0:
+		nbPhilosEating = (NB_PHILOSOPHES)/2;
+		break;
+	case 1:
+		nbPhilosEating = (NB_PHILOSOPHES-1)/2;
+		break;
+	}
 	// Lock the mutex
 	pthread_mutex_lock(&mutexEtats);
 	// Allocate memory
@@ -726,7 +797,9 @@ void* vieDuPhilosophe(void* idPtr)
 				//std::cout << "Philo "<< id << "ended eating success and dropped forks" << std::endl;
 				//actualiserEtAfficherEtatsPhilosophes(id,4);
 				actualiserEtAfficherEtatsPhilosophes(id,'P');
+				pthread_mutex_lock(&mutexCompteur);
 				nbPhilosEating--;
+				pthread_mutex_unlock(&mutexCompteur);
 				break;
 
 			case 'P':
