@@ -848,7 +848,7 @@ void *vieDuPhilosophe(void *idPtr)
 		pthread_mutex_lock(&mutexEtats);
 		char state = etatsPhilosophes[id];
 		pthread_mutex_unlock(&mutexEtats);
-<<<<<<< HEAD
+
 		switch (state) {
 			case 'F':
 				//std::cout << "Philo : "<< id << " is hungry" << std::endl;
@@ -859,18 +859,6 @@ void *vieDuPhilosophe(void *idPtr)
 				//usleep(10000);
 				sem_wait(semFourchettes[(id+1)%NB_PHILOSOPHES]);
 				actualiserEtAfficherEtatsPhilosophes(id,'M');
-=======
-		switch (state)
-		{
-		case 'F':
-			// std::cout << "Philo : "<< id << " is hungry" << std::endl;
-			sem_wait(semAutorisation[id]);
-			// actualiserEtAfficherEtatsPhilosophes(id,2);
-			sem_wait(semFourchettes[id]);
-			// usleep(10000);
-			sem_wait(semFourchettes[(id + 1) % NB_PHILOSOPHES]);
-			actualiserEtAfficherEtatsPhilosophes(id, 'M');
->>>>>>> refs/remotes/origin/master
 
 			// etatsPhilosophes[id] = 1;
 			break;
