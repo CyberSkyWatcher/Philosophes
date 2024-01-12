@@ -747,6 +747,7 @@ void* vieDuPhilosophe(void* idPtr)
 			case 'F':
 				//std::cout << "Philo : "<< id << " is hungry" << std::endl;
 				sem_wait(semAutorisation[id]);
+				pthread_testcancel(); // point où l'annulation du thread est permise
 				//actualiserEtAfficherEtatsPhilosophes(id,2);
 				sem_wait(semFourchettes[id]);
 				//usleep(10000);
@@ -1183,6 +1184,7 @@ void* vieDuPhilosophe(void* idPtr)
 			case 'F':
 				//std::cout << "Philo : "<< id << " is hungry" << std::endl;
 				sem_wait(semAutorisation[id]);
+				pthread_testcancel(); // point où l'annulation du thread est permise
 				//actualiserEtAfficherEtatsPhilosophes(id,2);
 				sem_wait(semFourchettes[id]);
 				//usleep(10000);
@@ -1612,6 +1614,10 @@ void manger(void) {
 }
 void terminerProgramme()
 {
+	for (int i = 0; i < NB_PHILOSOPHES; i++){
+		sem_post(semAutorisation[i]);
+	}
+	sleep(1);
 	for (int i = 0; i < NB_PHILOSOPHES; i++){
 		pthread_cancel(threadsPhilosophes[i]);
 	}
