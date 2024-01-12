@@ -38,6 +38,9 @@ int main(int argc, const char * argv[]) {
 #ifdef SOLUTION_2
     std::cout << "Solution 2 : ordonnanceur asynchrone, 1 seule fonction d'ordonnancement appelée depuis chaque tâche" << std::endl;
 #endif
+#ifdef SOLUTION_3
+    std::cout << "INTERBLOCAGE" << std::endl;
+#endif
     
     
     // - - - - - Mise en place du handler de signal - - - - -
