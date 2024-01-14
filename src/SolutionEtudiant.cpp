@@ -17,7 +17,7 @@ sem_t **semFinDeService;
 sem_t **semProgrammeReady;
 
 pthread_mutex_t mutexCompteur;
-
+pthread_mutex_t mutexCsv;
 /***********variables programme**********************/
 // début d'exécution
 bool start_cond = true;
@@ -33,6 +33,11 @@ bool next_group_ready = false;
 
 int nbPhilosEating;
 
+double total_execution_time[NB_PHILOSOPHES] = {0.0}; // Initialisation à 0
+int execution_count[NB_PHILOSOPHES] = {0}; // Initialisation à 0
+double average_execution_time[NB_PHILOSOPHES] = {0.0}; // Initialisation à 0
+
+
 #ifdef SOLUTION_1
 
 void fonctionOrdonnancer()
@@ -46,7 +51,6 @@ void fonctionOrdonnancer()
 	}
 	else if (etatsPhilosophes[0] == 3 && etatsPhilosophes[2] == 3 && etatsPhilosophes[1] == 1 && etatsPhilosophes[3] == 1)
 	{
-
 		// gr2 eat
 		actualiserEtAfficherEtatsPhilosophes(1, 2);
 		actualiserEtAfficherEtatsPhilosophes(3, 2);
@@ -580,74 +584,6 @@ void OrdonnancerAvecSemaphoresFinal()
 	}
 }
 
-void *timerFunction(void *arg)
-{
-	// Configuration du thread : il sera annulable à partir de n'importe quel point de préemption
-	// (appel bloquant, appel système, etc...)
-	pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
-	pthread_setcanceltype(PTHREAD_CANCEL_DEFERRED, NULL);
-	// start_cond = true;
-	for (int i = 0; i < NB_PHILOSOPHES; i++)
-	{
-		sem_wait(semProgrammeReady[i]);
-	}
-	usleep(1000);
-	// impair
-	if (start_cond && scenario == 1)
-	{
-		for (int i = 0; i < NB_PHILOSOPHES; i++)
-		{
-			if (i % 2 == 0 && i < (NB_PHILOSOPHES - 2))
-			{
-				sem_post(semAutorisation[i]);
-				std::cout << "philo id posted :" << (i + group) % NB_PHILOSOPHES << std::endl;
-			}
-		}
-		eat_counter++;
-		pthread_mutex_lock(&mutexCompteur);
-		nbPhilosEating = (NB_PHILOSOPHES - 1) / 2;
-		pthread_mutex_unlock(&mutexCompteur);
-		start_cond = false;
-		// group = eat_counter%NB_PHILOSOPHES;
-	}
-	else if (start_cond && scenario == 0)
-	{
-		for (int i = 0; i < NB_PHILOSOPHES; i++)
-		{
-			if (i % 2 == 0 && i < (NB_PHILOSOPHES))
-			{
-				sem_post(semAutorisation[i]);
-				std::cout << "philo id posted :" << (i + group) % NB_PHILOSOPHES << std::endl;
-			}
-		}
-		eat_counter++;
-		pthread_mutex_lock(&mutexCompteur);
-		nbPhilosEating = (NB_PHILOSOPHES) / 2;
-		pthread_mutex_unlock(&mutexCompteur);
-		start_cond = false;
-	}
-	while (1)
-	{
-		// appel ordonnanceur
-		// fonctionOrdonnancer();
-		// fonctionOrdonnancer_auto();
-		// fonctionOrdonnancerWithSemaphores();
-		// fonctionOrdonnancerWithSemaphoresFull();
-		OrdonnancerAvecSemaphoresFinal();
-		// fprintf(stderr,"nb philos eating",nbPhilosEating);
-		//  time count
-		// std::cout<<group<<std::endl;
-		time_t currentTime = time(NULL);
-		// std::cout << "Elapsed time: " << difftime(currentTime, instantDebut) << " seconds." << std::endl;
-
-		// Sleep
-		// std::this_thread::sleep_for(std::chrono::microseconds(10));
-		// usleep(1);
-		pthread_testcancel(); // point où l'annulation du thread est permise
-	}
-	return NULL;
-}
-
 void initialisation()
 {
 	start_cond = true;
@@ -826,6 +762,71 @@ void initialisation()
 	// std::cout <<debug<< std::endl;
 }
 
+void *timerFunction(void *arg)
+{
+	// Configuration du thread : il sera annulable à partir de n'importe quel point de préemption
+	// (appel bloquant, appel système, etc...)
+	pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
+	pthread_setcanceltype(PTHREAD_CANCEL_DEFERRED, NULL);
+	for (int i = 0; i < NB_PHILOSOPHES; i++)
+	{
+		sem_wait(semProgrammeReady[i]);
+	}
+	usleep(1000);
+	// impair
+	if (start_cond && scenario == 1)
+	{
+		for (int i = 0; i < NB_PHILOSOPHES; i++)
+		{
+			if (i % 2 == 0 && i < (NB_PHILOSOPHES - 2))
+			{
+				sem_post(semAutorisation[i]);
+				std::cout << "philo id posted :" << (i + group) % NB_PHILOSOPHES << std::endl;
+			}
+		}
+		eat_counter++;
+		pthread_mutex_lock(&mutexCompteur);
+		nbPhilosEating = (NB_PHILOSOPHES - 1) / 2;
+		pthread_mutex_unlock(&mutexCompteur);
+		start_cond = false;
+		// group = eat_counter%NB_PHILOSOPHES;
+	}
+	else if (start_cond && scenario == 0)
+	{
+		for (int i = 0; i < NB_PHILOSOPHES; i++)
+		{
+			if (i % 2 == 0 && i < (NB_PHILOSOPHES))
+			{
+				sem_post(semAutorisation[i]);
+				std::cout << "philo id posted :" << (i + group) % NB_PHILOSOPHES << std::endl;
+			}
+		}
+		eat_counter++;
+		pthread_mutex_lock(&mutexCompteur);
+		nbPhilosEating = (NB_PHILOSOPHES) / 2;
+		pthread_mutex_unlock(&mutexCompteur);
+		start_cond = false;
+	}
+	while (1)
+	{
+		// appel ordonnanceur
+		// fonctionOrdonnancer();
+		// fonctionOrdonnancer_auto();
+		// fonctionOrdonnancerWithSemaphores();
+		// fonctionOrdonnancerWithSemaphoresFull();
+		OrdonnancerAvecSemaphoresFinal();
+		// fprintf(stderr,"nb philos eating",nbPhilosEating);
+		//  time count
+		// std::cout<<group<<std::endl;
+		// std::cout << "Elapsed time: " << difftime(currentTime, instantDebut) << " seconds." << std::endl;
+		// Sleep
+		// std::this_thread::sleep_for(std::chrono::microseconds(10));
+		// usleep(1);
+		pthread_testcancel(); // point où l'annulation du thread est permise
+	}
+	return NULL;
+}
+
 void *vieDuPhilosophe(void *idPtr)
 {
 	int id = *((int *)idPtr);
@@ -833,9 +834,12 @@ void *vieDuPhilosophe(void *idPtr)
 	// (appel bloquant, appel système, etc...)
 	pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
 	pthread_setcanceltype(PTHREAD_CANCEL_DEFERRED, NULL);
+	struct timespec start, end;
+	double elapsed_time = 0.0;
 	// while(!timerRunning){}
 	fprintf(stderr, "\033[0;32mPhilo with ID %d is ready\033[0m\n", id);
 	sem_post(semProgrammeReady[id]);
+	clock_gettime(CLOCK_MONOTONIC, &start);
 	while (1)
 	{
 
@@ -858,6 +862,15 @@ void *vieDuPhilosophe(void *idPtr)
 				sem_wait(semFourchettes[id]);
 				//usleep(10000);
 				sem_wait(semFourchettes[(id+1)%NB_PHILOSOPHES]);
+				clock_gettime(CLOCK_MONOTONIC, &end);
+				elapsed_time = (end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec) / 1e9;
+				pthread_mutex_lock(&mutexCsv);
+				total_execution_time[id] += elapsed_time;
+				execution_count[id]++;
+				pthread_mutex_lock(&mutexCout);
+				std::cout << "Temps d'attente du philo"<< id << " = " << elapsed_time <<std::endl;
+				pthread_mutex_unlock(&mutexCout);
+				pthread_mutex_unlock(&mutexCsv);
 				actualiserEtAfficherEtatsPhilosophes(id,'M');
 
 			// etatsPhilosophes[id] = 1;
@@ -883,6 +896,8 @@ void *vieDuPhilosophe(void *idPtr)
 			penser();
 			// std::cout << "Philo : "<< id << " done thinking" << std::endl;
 			actualiserEtAfficherEtatsPhilosophes(id, 'F');
+			elapsed_time = 0.0;
+			clock_gettime(CLOCK_MONOTONIC, &start);
 			// std::cout << "Philo : "<< id << " is waiting for an order" << std::endl;
 			break;
 
@@ -959,7 +974,8 @@ void actualiserEtAfficherEtatsPhilosophes(int idPhilosopheChangeant, char nouvel
 		else
 			std::cout << "  ";
 	}
-	std::cout << "                 (t=" << difftime(time(NULL), instantDebut) << ")" << std::endl;
+	//std::cout << "                 (t=" << difftime(time(NULL), instantDebut) << ")" << std::endl;
+	std::cout <<" "<< std::endl;
 	pthread_mutex_unlock(&mutexCout);
 }
 
@@ -1782,6 +1798,23 @@ void manger(void)
 	double randomValue = (double)rand() / RAND_MAX * DUREE_MANGE_MAX_S;
 	sleep((useconds_t)(randomValue));
 }
+void writeDataToCSV() {
+    std::ofstream outputFile("philosopher_data.csv");
+
+    // Header
+    outputFile << "Philosopher ID,Total Execution Time (s),Execution Count,Average Execution Time (s)\n";
+
+    for (int i = 0; i < NB_PHILOSOPHES; ++i) {
+    	average_execution_time[i] = total_execution_time[i] / execution_count[i];
+        outputFile << i << ","
+                   << total_execution_time[i] << ","
+                   << execution_count[i] << ","
+                   << average_execution_time[i] << "\n";
+    }
+
+    outputFile.close();
+}
+
 void terminerProgramme()
 {
 	for (int i = 0; i < NB_PHILOSOPHES; i++)
@@ -1815,6 +1848,14 @@ void terminerProgramme()
 
 	std::cout << "Philos destroyed" << std::endl;
 
+	/*for(int i = 0; i<NB_PHILOSOPHES; i++){
+		double average_execution_time = total_execution_time[i] / execution_count[i];
+		// Stocker le temps d'exécution dans un fichier CSV
+		std::ofstream csv_file("execution_times.csv", std::ios::app);
+		csv_file << "Moyenne de temps pour philo avec ID"<< i << "=" << average_execution_time  << std::endl;
+		csv_file.close();
+	}*/
+	writeDataToCSV();
 	timerRunning = false;
 	// pthread_join(&timerThread);
 	// exit(EXIT_SUCCESS);

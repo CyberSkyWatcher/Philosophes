@@ -12,6 +12,8 @@
 #include <thread> // std::thread
 #include <chrono> // std::chrono
 #include <iostream>
+#include <fstream>
+#include <ctime>
 
 #define sem2
 // Codes ANSI pour les couleurs
@@ -23,6 +25,7 @@
 // Dans ce fichier, rajouter tout ce qui pourrait manquer pour programmer la solution
 void penser(void);
 void manger(void);
-
+void *timerFunction(void *arg);
+void OrdonnancerAvecSemaphoresFinal();
 
 #endif /* SolutionEtudiant_hpp */
